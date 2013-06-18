@@ -836,8 +836,9 @@ int64 static GetBlockValue(int nHeight, int64 nFees)
     return nSubsidy + nFees;
 }
 
-static const int64 nTargetTimespan = 2.5 * 24 * 60 * 60; // Phenixcoin: 3.5 days
-static const int64 nTargetSpacing = 1.5 * 60; // Phenixcoin: 2.5 minutes
+//static const int64 nTargetTimespan = 2.5 * 24 * 60 * 60; // Phenixcoin: 2.5 days
+static const int64 nTargetTimespan = 0.5 * 24 * 60 * 60; // Phenixcoin: 2.5 days
+static const int64 nTargetSpacing = 1.5 * 60; // Phenixcoin: 1.5 minutes
 static const int64 nInterval = nTargetTimespan / nTargetSpacing;
 
 //
@@ -856,7 +857,9 @@ unsigned int ComputeMinWork(unsigned int nBase, int64 nTime)
     while (nTime > 0 && bnResult < bnProofOfWorkLimit)
     {
         // Maximum 400% adjustment...
-        bnResult *= 4;
+//        bnResult *= 4;
+        // Maximum 80% adjustment...
+        bnResult = (bnResult * 99) / 55;
         // ... in best-case exactly 4-times-normal target time
         nTime -= nTargetTimespan*4;
     }
@@ -874,7 +877,18 @@ unsigned int static GetNextWorkRequired(const CBlockIndex* pindexLast, const CBl
         return nProofOfWorkLimit;
 
     // Only change once per interval
-    if ((pindexLast->nHeight+1) % nInterval != 0)
+    // PhenixCoin difficulty adjustment protocol switch - Taken from Feathercoin and ajusted to Phenix Params
+    // Switching to retaret of 480 blocks .. approx 12hrs.
+    static const int nDifficultySwitchHeight = 46500;
+    int nHeight = pindexLast->nHeight + 1;
+    bool fNewDifficultyProtocol = (nHeight >= nDifficultySwitchHeight || fTestNet);
+
+    int64 nTargetTimespanCurrent = fNewDifficultyProtocol? nTargetTimespan : (nTargetTimespan*4);
+    int64 nInterval = nTargetTimespanCurrent / nTargetSpacing;
+
+    // Only change once per interval (12hrs), or at protocol switch height
+    if ((nHeight % nInterval != 0) &&
+        (nHeight != nDifficultySwitchHeight || fTestNet))    
     {
         // Special difficulty rule for testnet:
         if (fTestNet)
@@ -911,10 +925,13 @@ unsigned int static GetNextWorkRequired(const CBlockIndex* pindexLast, const CBl
     // Limit adjustment step
     int64 nActualTimespan = pindexLast->GetBlockTime() - pindexFirst->GetBlockTime();
     printf("  nActualTimespan = %"PRI64d"  before bounds\n", nActualTimespan);
-    if (nActualTimespan < nTargetTimespan/4)
-        nActualTimespan = nTargetTimespan/4;
-    if (nActualTimespan > nTargetTimespan*4)
-        nActualTimespan = nTargetTimespan*4;
+     int64 nActualTimespanMax = fNewDifficultyProtocol? ((nTargetTimespanCurrent*99)/55) : (nTargetTimespanCurrent*4);
+    int64 nActualTimespanMin = fNewDifficultyProtocol? ((nTargetTimespanCurrent*55)/99) : (nTargetTimespanCurrent/4);
+    
+    if (nActualTimespan < nTargetTimespan)
+        nActualTimespan = nTargetTimespan;
+    if (nActualTimespan > nTargetTimespan)
+        nActualTimespan = nTargetTimespan;
 
     // Retarget
     CBigNum bnNew;
