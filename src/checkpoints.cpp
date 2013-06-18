@@ -24,40 +24,34 @@ namespace Checkpoints
     //
     static MapCheckpoints mapCheckpoints =
         boost::assign::map_list_of
-        (     1, uint256("0x00000fd3412aa5c504988e992135b8ab1f349535d74293839dc837d19e965287"))
-//        (     2, uint256("0x13957807cdd1d02f993909fa59510e318763f99a506c4c426e3b254af09f40d7"))
-//        (  1500, uint256("0x841a2965955dd288cfa707a755d05a54e45f8bd476835ec9af4402a2b59a2967"))
-//        (  4032, uint256("0x9ce90e427198fc0ef05e5905ce3503725b80e26afd35a987965fd7e3d9cf0846"))
-//        (  8064, uint256("0xeb984353fc5190f210651f150c40b8a4bab9eeeff0b729fcb3987da694430d70"))
-//        ( 16128, uint256("0x602edf1859b7f9a6af809f1d9b0e6cb66fdc1d4d9dcd7a4bec03e12a1ccd153d"))
-//        ( 23420, uint256("0xd80fdf9ca81afd0bd2b2a90ac3a9fe547da58f2530ec874e978fce0b5101b507"))
-//        ( 50000, uint256("0x69dc37eb029b68f075a5012dcc0419c127672adb4f3a32882b2b3e71d07a20a6"))
-//        ( 80000, uint256("0x4fcb7c02f676a300503f49c764a89955a8f920b46a8cbecb4867182ecdb2e90a"))
-//        (120000, uint256("0xbd9d26924f05f6daa7f0155f32828ec89e8e29cee9e7121b026a7a3552ac6131"))
-//        (161500, uint256("0xdbe89880474f4bb4f75c227c77ba1cdc024991123b28b8418dbbf7798471ff43"))
-//        (179620, uint256("0x2ad9c65c990ac00426d18e446e0fd7be2ffa69e9a7dcb28358a50b2b78b9f709"))
+        (     1, uint256("0x006e800301bbd850d7ba67ad9295c3a940f5fc8f5581e3484967bd33c4c8b965"))
+        (  1500, uint256("0x4bdb2c6c8f7919c4d1234fd2c207975d76c4fbcb9a5d8180f2dff7d99cb76a55"))
+        (  3000, uint256("0xcb87d608786c7452b95ff50349171ed7f502e218ca95a6708740ae8ab68b3631"))
+        (  8000, uint256("0xa512b03a7006ce3a0f0dc485f1a3b424769e5665169124e2947a51e3842d9dce"))
+        ( 20000, uint256("0x2f6c3ff7712dabfe1ed98ed6da35086755f951836da673a0b090c07fdb6c2282"))
+        ( 35000, uint256("0xf4e91cee78c2d25b23bbd8468ddba2dffaeb1a911d4cae742a826985571e07dc"))
+        ( 45000, uint256("0x01a1a7077a8bd30244e96bdc512ee6674dcf57a21b0986fbedbc29b0a3b37d79"))
+        ( 46000, uint256("0x802c4c7acc550c7472f897a24b2a3e4972dec025a14ef99b03df91f240c58456"))
         ;
 
     bool CheckBlock(int nHeight, const uint256& hash)
     {
         if (fTestNet) return true; // Testnet has no checkpoints
-        return true; 
-        //MapCheckpoints::const_iterator i = mapCheckpoints.find(nHeight);
-        //if (i == mapCheckpoints.end()) return true;
-        //return hash == i->second;
+        
+        MapCheckpoints::const_iterator i = mapCheckpoints.find(nHeight);
+        if (i == mapCheckpoints.end()) return true;
+        return hash == i->second;
     }
 
     int GetTotalBlocksEstimate()
     {
         if (fTestNet) return 0;
-        return 0;
-        //return mapCheckpoints.rbegin()->first;
+        return mapCheckpoints.rbegin()->first;
     }
 
     CBlockIndex* GetLastCheckpoint(const std::map<uint256, CBlockIndex*>& mapBlockIndex)
     {
         if (fTestNet) return NULL;
-        return NULL;
         BOOST_REVERSE_FOREACH(const MapCheckpoints::value_type& i, mapCheckpoints)
         {
             const uint256& hash = i.second;
