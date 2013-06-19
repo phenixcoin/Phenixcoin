@@ -837,9 +837,9 @@ int64 static GetBlockValue(int nHeight, int64 nFees)
 }
 
 //static const int64 nTargetTimespan = 2.5 * 24 * 60 * 60; // Phenixcoin: 2.5 days
-static const int64 nTargetTimespan = 0.5 * 24 * 60 * 60; // Phenixcoin: 2.5 days
+static const int64 nTargetTimespan = (5 * 24 * 60 * 60) / 8; // Phenixcoin: 2.5 days
 static const int64 nTargetSpacing = 1.5 * 60; // Phenixcoin: 1.5 minutes
-static const int64 nInterval = nTargetTimespan / nTargetSpacing;
+
 
 //
 // minimum amount of work that could possibly be required nTime after
