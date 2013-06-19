@@ -928,10 +928,10 @@ unsigned int static GetNextWorkRequired(const CBlockIndex* pindexLast, const CBl
      int64 nActualTimespanMax = fNewDifficultyProtocol? ((nTargetTimespanCurrent*99)/55) : (nTargetTimespanCurrent*4);
     int64 nActualTimespanMin = fNewDifficultyProtocol? ((nTargetTimespanCurrent*55)/99) : (nTargetTimespanCurrent/4);
     
-    if (nActualTimespan < nTargetTimespan)
-        nActualTimespan = nTargetTimespan;
-    if (nActualTimespan > nTargetTimespan)
-        nActualTimespan = nTargetTimespan;
+    if (nActualTimespan < nActualTimespanMin)
+        nActualTimespan = nActualTimespanMin;
+    if (nActualTimespan > nActualTimespanMax)
+        nActualTimespan = nActualTimespanMax;
 
     // Retarget
     CBigNum bnNew;
@@ -944,7 +944,7 @@ unsigned int static GetNextWorkRequired(const CBlockIndex* pindexLast, const CBl
 
     /// debug print
     printf("GetNextWorkRequired RETARGET\n");
-    printf("nTargetTimespan = %"PRI64d"    nActualTimespan = %"PRI64d"\n", nTargetTimespan, nActualTimespan);
+    printf("nTargetTimespan = %"PRI64d"    nActualTimespan = %"PRI64d"\n", nTargetTimespanCurrent, nActualTimespan);
     printf("Before: %08x  %s\n", pindexLast->nBits, CBigNum().SetCompact(pindexLast->nBits).getuint256().ToString().c_str());
     printf("After:  %08x  %s\n", bnNew.GetCompact(), bnNew.getuint256().ToString().c_str());
 
