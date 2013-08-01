@@ -837,10 +837,11 @@ int64 static GetBlockValue(int nHeight, int64 nFees)
 }
 
 //static const int64 nTargetTimespan = 2.5 * 24 * 60 * 60; // Phenixcoin: 2.5 days
-//static const int64 nTargetTimespan = (5 * 24 * 60 * 60) / 8; // Phenixcoin: 2.5 days
-//static const int64 nTargetSpacing = 1.5 * 60; // Phenixcoin: 1.5 minutes
-static const int64 nTargetTimespan = (3 * 30 * 60) + 6; // 90.1 Minutes
-static const int64 nTargetSpacing = 1 * 51; // Phenixcoin: 51 seconds
+static const int64 nTargetTimespan = (5 * 24 * 60 * 60) / 8; // Phenixcoin: 2.5 days
+static const int64 nTargetSpacing = 1.5 * 60; // Phenixcoin: 1.5 minutes
+static const int64 nTargetTimespan_retar = 3 * 30 * 60; // 90 Minutes
+static const int64 nTargetSpacing_retar = 1 * 50; // Phenixcoin: 50 seconds
+static const int nRetargetSwitchHeight = 69444;
 
 //
 // minimum amount of work that could possibly be required nTime after
@@ -862,7 +863,11 @@ unsigned int ComputeMinWork(unsigned int nBase, int64 nTime)
         // Maximum 80% adjustment...
         bnResult = (bnResult * 99) / 55;
         // ... in best-case exactly 4-times-normal target time
-        nTime -= nTargetTimespan*4;
+        if(nBestHeight+1>=nRetargetSwitchHeight){
+            nTime -= nTargetTimespan_retar*4;
+        } else {
+            nTime -= nTargetTimespan*4;
+        }
     }
     if (bnResult > bnProofOfWorkLimit)
         bnResult = bnProofOfWorkLimit;
@@ -886,7 +891,10 @@ unsigned int static GetNextWorkRequired(const CBlockIndex* pindexLast, const CBl
 
     int64 nTargetTimespanCurrent = fNewDifficultyProtocol? nTargetTimespan : (nTargetTimespan*4);
     int64 nInterval = nTargetTimespanCurrent / nTargetSpacing;
-
+    if(nHeight>=nRetargetSwitchHeight){
+        nTargetTimespanCurrent = nTargetTimespan_retar;
+        nInterval = nTargetTimespanCurrent / nTargetSpacing_retar;
+    }	
     // Only change once per interval (12hrs), or at protocol switch height
     if ((nHeight % nInterval != 0) &&
         (nHeight != nDifficultySwitchHeight || fTestNet))    
@@ -2431,7 +2439,7 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv)
             return false;
         }
                 
-        if(nBestHeight >= 69430){
+        if(nBestHeight >= nRetargetSwitchHeight){
             if (pfrom->nVersion < RETAR_PROTO_VERSION){
                 printf("partner %s using obsolete version %i; disconnecting\n", pfrom->addr.ToString().c_str(), pfrom->nVersion);
                 pfrom->fDisconnect = true;
