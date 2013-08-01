@@ -837,9 +837,10 @@ int64 static GetBlockValue(int nHeight, int64 nFees)
 }
 
 //static const int64 nTargetTimespan = 2.5 * 24 * 60 * 60; // Phenixcoin: 2.5 days
-static const int64 nTargetTimespan = (5 * 24 * 60 * 60) / 8; // Phenixcoin: 2.5 days
-static const int64 nTargetSpacing = 1.5 * 60; // Phenixcoin: 1.5 minutes
-
+//static const int64 nTargetTimespan = (5 * 24 * 60 * 60) / 8; // Phenixcoin: 2.5 days
+//static const int64 nTargetSpacing = 1.5 * 60; // Phenixcoin: 1.5 minutes
+static const int64 nTargetTimespan = (3 * 30 * 60) + 6; // 90.1 Minutes
+static const int64 nTargetSpacing = 1 * 51; // Phenixcoin: 51 seconds
 
 //
 // minimum amount of work that could possibly be required nTime after
@@ -2428,6 +2429,14 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv)
             printf("partner %s using obsolete version %i; disconnecting\n", pfrom->addr.ToString().c_str(), pfrom->nVersion);
             pfrom->fDisconnect = true;
             return false;
+        }
+                
+        if(nBestHeight >= 69430){
+            if (pfrom->nVersion < RETAR_PROTO_VERSION){
+                printf("partner %s using obsolete version %i; disconnecting\n", pfrom->addr.ToString().c_str(), pfrom->nVersion);
+                pfrom->fDisconnect = true;
+                return false;
+            }
         }
 
         if (pfrom->nVersion == 10300)
