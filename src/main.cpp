@@ -826,22 +826,29 @@ uint256 static GetOrphanRoot(const CBlock* pblock)
     return pblock->GetHash();
 }
 
-int64 static GetBlockValue(int nHeight, int64 nFees)
-{
-    int64 nSubsidy = 50 * COIN;
-
-    // Subsidy is cut in half every 840000 blocks, which will occur approximately every 4 years
-    nSubsidy >>= (nHeight / 840000); // Phenixcoin: 840k blocks in ~4 years
-
-    return nSubsidy + nFees;
-}
-
 //static const int64 nTargetTimespan = 2.5 * 24 * 60 * 60; // Phenixcoin: 2.5 days
 static const int64 nTargetTimespan = (5 * 24 * 60 * 60) / 8; // Phenixcoin: 2.5 days
 static const int64 nTargetSpacing = 1.5 * 60; // Phenixcoin: 1.5 minutes
 static const int64 nTargetTimespan_retar = 3 * 30 * 60; // 90 Minutes
 static const int64 nTargetSpacing_retar = 1 * 50; // Phenixcoin: 50 seconds
 static const int nRetargetSwitchHeight = 69444;
+static const int64 nTargetTimespan_retar_two = 126 * 45; // 94.5 Minutes
+static const int64 nTargetSpacing_retar_two = 1 * 45; // Phenixcoin: 45 seconds
+static const int nRetargetSwitchHeight_two = 74100;
+
+int64 static GetBlockValue(int nHeight, int64 nFees)
+{
+    int64 nSubsidy = 25 * COIN;
+	// Coin reward before patch
+	if(nHeight < nRetargetSwitchHeight_two) {
+              nSubsidy = 50 * COIN;
+    }
+
+    // Subsidy is cut in half every 840000 blocks, which will occur approximately every 4 years
+    nSubsidy >>= (nHeight / 840000); // Phenixcoin: 840k blocks in ~4 years
+
+    return nSubsidy + nFees;
+}
 
 //
 // minimum amount of work that could possibly be required nTime after
@@ -861,11 +868,15 @@ unsigned int ComputeMinWork(unsigned int nBase, int64 nTime)
         // Maximum 400% adjustment...
 //        bnResult *= 4;
         // Maximum 80% adjustment...
-        bnResult = (bnResult * 99) / 55;
+        // bnResult = (bnResult * 99) / 55;
+		// Maximum 9% adjustment...
+        bnResult = (bnResult * 109) / 100;
         // ... in best-case exactly 4-times-normal target time
-        if(nBestHeight+1>=nRetargetSwitchHeight){
+        if(nBestHeight+1 >= nRetargetSwitchHeight && nBestHeight+1 < nRetargetSwitchHeight_two){
             nTime -= nTargetTimespan_retar*4;
-        } else {
+        } else if (nBestHeight+1 >= nRetargetSwitchHeight_two) {
+			nTime -= nTargetTimespan_retar_two*4;
+		} else {
             nTime -= nTargetTimespan*4;
         }
     }
@@ -888,16 +899,19 @@ unsigned int static GetNextWorkRequired(const CBlockIndex* pindexLast, const CBl
     static const int nDifficultySwitchHeight = 46500;
     int nHeight = pindexLast->nHeight + 1;
     bool fNewDifficultyProtocol = (nHeight >= nDifficultySwitchHeight || fTestNet);
+	bool fNewDifficultyProtocol_two = (nHeight >= nRetargetSwitchHeight_two || fTestNet);
 
     int64 nTargetTimespanCurrent = fNewDifficultyProtocol? nTargetTimespan : (nTargetTimespan*4);
     int64 nInterval = nTargetTimespanCurrent / nTargetSpacing;
-    if(nHeight>=nRetargetSwitchHeight){
+    if(nHeight >= nRetargetSwitchHeight && nHeight < nRetargetSwitchHeight_two){
         nTargetTimespanCurrent = nTargetTimespan_retar;
         nInterval = nTargetTimespanCurrent / nTargetSpacing_retar;
-    }	
+    } else if (nHeight >= nRetargetSwitchHeight_two) {
+		nTargetTimespanCurrent = nTargetTimespan_retar_two;
+        nInterval = nTargetTimespanCurrent / nTargetSpacing_retar_two;
+	}
     // Only change once per interval (12hrs), or at protocol switch height
-    if ((nHeight % nInterval != 0) &&
-        (nHeight != nDifficultySwitchHeight || fTestNet))    
+    if ((nHeight % nInterval != 0) && (nHeight != nDifficultySwitchHeight || nHeight != nRetargetSwitchHeight_two || fTestNet))    
     {
         // Special difficulty rule for testnet:
         if (fTestNet)
@@ -934,8 +948,12 @@ unsigned int static GetNextWorkRequired(const CBlockIndex* pindexLast, const CBl
     // Limit adjustment step
     int64 nActualTimespan = pindexLast->GetBlockTime() - pindexFirst->GetBlockTime();
     printf("  nActualTimespan = %"PRI64d"  before bounds\n", nActualTimespan);
-     int64 nActualTimespanMax = fNewDifficultyProtocol? ((nTargetTimespanCurrent*99)/55) : (nTargetTimespanCurrent*4);
+    int64 nActualTimespanMax = fNewDifficultyProtocol? ((nTargetTimespanCurrent*99)/55) : (nTargetTimespanCurrent*4);
     int64 nActualTimespanMin = fNewDifficultyProtocol? ((nTargetTimespanCurrent*55)/99) : (nTargetTimespanCurrent/4);
+	if (fNewDifficultyProtocol_two) {
+		nActualTimespanMax = (nTargetTimespanCurrent*109)/100;
+		nActualTimespanMin = (nTargetTimespanCurrent*100)/109;
+	}
     
     if (nActualTimespan < nActualTimespanMin)
         nActualTimespan = nActualTimespanMin;
