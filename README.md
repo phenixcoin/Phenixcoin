@@ -1,9 +1,9 @@
 Phenixcoin - a lite version of Bitcoin optimized for CPU mining using scrypt as a proof of work scheme.
- - 50 second block targets
- - Diificulty retarget every 108 blocks
+ - 45 second block targets
+ - Diificulty retarget every 126 blocks
  - subsidy halves in 840k blocks (~4 years)
  - ~168 million total coins
- - 50 coins per block
+ - 25 coins per block
  
 
 Development process
