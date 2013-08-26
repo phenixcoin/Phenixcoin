@@ -826,6 +826,7 @@ uint256 static GetOrphanRoot(const CBlock* pblock)
     return pblock->GetHash();
 }
 
+
 //static const int64 nTargetTimespan = 2.5 * 24 * 60 * 60; // Phenixcoin: 2.5 days
 static const int64 nTargetTimespan = (5 * 24 * 60 * 60) / 8; // Phenixcoin: 2.5 days
 static const int64 nTargetSpacing = 1.5 * 60; // Phenixcoin: 1.5 minutes
@@ -838,17 +839,19 @@ static const int nRetargetSwitchHeight_two = 74100;
 
 int64 static GetBlockValue(int nHeight, int64 nFees)
 {
-    int64 nSubsidy = 25 * COIN;
+	int64 nSubsidy = 25 * COIN;
 	// Coin reward before patch
 	if(nHeight < nRetargetSwitchHeight_two) {
               nSubsidy = 50 * COIN;
-    }
+	}
 
-    // Subsidy is cut in half every 840000 blocks, which will occur approximately every 4 years
-    nSubsidy >>= (nHeight / 840000); // Phenixcoin: 840k blocks in ~4 years
+    // Subsidy is cut in half every 1680000 blocks, which will occur approximately every 4 years
+    nSubsidy >>= (nHeight / 1680000); // Phenixcoin: 1680k blocks in ~4 years
 
     return nSubsidy + nFees;
 }
+
+
 
 //
 // minimum amount of work that could possibly be required nTime after
@@ -858,26 +861,23 @@ unsigned int ComputeMinWork(unsigned int nBase, int64 nTime)
 {
     // Testnet has min-difficulty blocks
     // after nTargetSpacing*2 time between blocks:
-    if (fTestNet && nTime > nTargetSpacing*2)
-        return bnProofOfWorkLimit.GetCompact();
+    if (fTestNet && nTime > nTargetSpacing*2) return bnProofOfWorkLimit.GetCompact();
 
     CBigNum bnResult;
     bnResult.SetCompact(nBase);
+
+
     while (nTime > 0 && bnResult < bnProofOfWorkLimit)
     {
-        // Maximum 400% adjustment...
-//        bnResult *= 4;
-        // Maximum 80% adjustment...
-        // bnResult = (bnResult * 99) / 55;
-		// Maximum 9% adjustment...
+        // Maximum 9% adjustment...
         bnResult = (bnResult * 109) / 100;
         // ... in best-case exactly 4-times-normal target time
-        if(nBestHeight+1 >= nRetargetSwitchHeight && nBestHeight+1 < nRetargetSwitchHeight_two){
+	if(nBestHeight+1>=nRetargetSwitchHeight_two){	
+	    nTime -= nTargetTimespan_retar_two*4;
+	} else if(nBestHeight+1>=nRetargetSwitchHeight && nBestHeight+1<nRetargetSwitchHeight_two){
             nTime -= nTargetTimespan_retar*4;
-        } else if (nBestHeight+1 >= nRetargetSwitchHeight_two) {
-			nTime -= nTargetTimespan_retar_two*4;
-		} else {
-            nTime -= nTargetTimespan*4;
+        } else {
+	    nTime -= nTargetTimespan*4;	    
         }
     }
     if (bnResult > bnProofOfWorkLimit)
@@ -888,7 +888,6 @@ unsigned int ComputeMinWork(unsigned int nBase, int64 nTime)
 unsigned int static GetNextWorkRequired(const CBlockIndex* pindexLast, const CBlock *pblock)
 {
     unsigned int nProofOfWorkLimit = bnProofOfWorkLimit.GetCompact();
-
     // Genesis block
     if (pindexLast == NULL)
         return nProofOfWorkLimit;
@@ -896,22 +895,27 @@ unsigned int static GetNextWorkRequired(const CBlockIndex* pindexLast, const CBl
     // Only change once per interval
     // PhenixCoin difficulty adjustment protocol switch - Taken from Feathercoin and ajusted to Phenix Params
     // Switching to retaret of 480 blocks .. approx 12hrs.
-    static const int nDifficultySwitchHeight = 46500;
+    static const int nDifficultySwitchHeight = 46500; 
     int nHeight = pindexLast->nHeight + 1;
     bool fNewDifficultyProtocol = (nHeight >= nDifficultySwitchHeight || fTestNet);
-	bool fNewDifficultyProtocol_two = (nHeight >= nRetargetSwitchHeight_two || fTestNet);
+    bool fNewDifficultyProtocol_two = (nHeight >= nRetargetSwitchHeight_two || fTestNet);
 
     int64 nTargetTimespanCurrent = fNewDifficultyProtocol? nTargetTimespan : (nTargetTimespan*4);
     int64 nInterval = nTargetTimespanCurrent / nTargetSpacing;
-    if(nHeight >= nRetargetSwitchHeight && nHeight < nRetargetSwitchHeight_two){
+    bool fDoRetarget = ((nHeight % nInterval != 0) && (nHeight != nDifficultySwitchHeight || fTestNet));
+    
+    if(nHeight>=nRetargetSwitchHeight && nHeight<nRetargetSwitchHeight_two){
         nTargetTimespanCurrent = nTargetTimespan_retar;
         nInterval = nTargetTimespanCurrent / nTargetSpacing_retar;
-    } else if (nHeight >= nRetargetSwitchHeight_two) {
-		nTargetTimespanCurrent = nTargetTimespan_retar_two;
+	fDoRetarget = ((nHeight % nInterval != 0) && (nHeight != nDifficultySwitchHeight || fTestNet));
+    } else if(nHeight>=nRetargetSwitchHeight_two){
+        nTargetTimespanCurrent = nTargetTimespan_retar_two;
         nInterval = nTargetTimespanCurrent / nTargetSpacing_retar_two;
-	}
+	fDoRetarget = ((nHeight % nInterval != 0) && (nHeight != nRetargetSwitchHeight_two || fTestNet));
+    }
+    
     // Only change once per interval (12hrs), or at protocol switch height
-    if ((nHeight % nInterval != 0) && (nHeight != nDifficultySwitchHeight || nHeight != nRetargetSwitchHeight_two || fTestNet))    
+    if (fDoRetarget)
     {
         // Special difficulty rule for testnet:
         if (fTestNet)
@@ -929,7 +933,6 @@ unsigned int static GetNextWorkRequired(const CBlockIndex* pindexLast, const CBl
                 return pindex->nBits;
             }
         }
-
         return pindexLast->nBits;
     }
 
@@ -939,7 +942,7 @@ unsigned int static GetNextWorkRequired(const CBlockIndex* pindexLast, const CBl
     if (nHeight != nInterval)
         blockstogoback = nInterval;
 
-    // Go back by what we want to be 14 days worth of blocks
+    // Go back by what we want to be 90min worth of blocks blocks
     const CBlockIndex* pindexFirst = pindexLast;
     for (int i = 0; pindexFirst && i < blockstogoback; i++)
         pindexFirst = pindexFirst->pprev;
@@ -947,18 +950,15 @@ unsigned int static GetNextWorkRequired(const CBlockIndex* pindexLast, const CBl
 
     // Limit adjustment step
     int64 nActualTimespan = pindexLast->GetBlockTime() - pindexFirst->GetBlockTime();
-    printf("  nActualTimespan = %"PRI64d"  before bounds\n", nActualTimespan);
     int64 nActualTimespanMax = fNewDifficultyProtocol? ((nTargetTimespanCurrent*99)/55) : (nTargetTimespanCurrent*4);
     int64 nActualTimespanMin = fNewDifficultyProtocol? ((nTargetTimespanCurrent*55)/99) : (nTargetTimespanCurrent/4);
-	if (fNewDifficultyProtocol_two) {
-		nActualTimespanMax = (nTargetTimespanCurrent*109)/100;
-		nActualTimespanMin = (nTargetTimespanCurrent*100)/109;
-	}
-    
-    if (nActualTimespan < nActualTimespanMin)
-        nActualTimespan = nActualTimespanMin;
-    if (nActualTimespan > nActualTimespanMax)
-        nActualTimespan = nActualTimespanMax;
+    if (fNewDifficultyProtocol_two) {
+	nActualTimespanMax = (nTargetTimespanCurrent*109)/100;
+	nActualTimespanMin = (nTargetTimespanCurrent*100)/109;
+    }
+
+    if (nActualTimespan < nActualTimespanMin) nActualTimespan = nActualTimespanMin;
+    if (nActualTimespan > nActualTimespanMax) nActualTimespan = nActualTimespanMax;
 
     // Retarget
     CBigNum bnNew;
@@ -2049,7 +2049,7 @@ bool LoadBlockIndex(bool fAllowNew)
         txNew.vin[0].scriptSig = CScript() << 486604799 << CBigNum(4) << vector<unsigned char>((const unsigned char*)pszTimestamp, (const unsigned char*)pszTimestamp + strlen(pszTimestamp));
         txNew.vout[0].nValue = 50 * COIN;
        // txNew.vout[0].scriptPubKey = CScript() << ParseHex("040184710fa689ad5023690c80f3a49c8f13f8d45b8c857fbcbc8bc4a8e4d3eb4b10f4d4604fa08dce601aaf0f470216fe1b51850b4acf21b179c45070ac7b03a9") << OP_CHECKSIG;
-        txNew.vout[0].scriptPubKey = CScript() << 0x0 << OP_CHECKSIG; 
+        txNew.vout[0].scriptPubKey = CScript() << 0x0 << OP_CHECKSIG;
         CBlock block;
         block.vtx.push_back(txNew);
         block.hashPrevBlock = 0;
@@ -2456,7 +2456,7 @@ bool static ProcessMessage(CNode* pfrom, string strCommand, CDataStream& vRecv)
             pfrom->fDisconnect = true;
             return false;
         }
-                
+
         if(nBestHeight >= nRetargetSwitchHeight){
             if (pfrom->nVersion < RETAR_PROTO_VERSION){
                 printf("partner %s using obsolete version %i; disconnecting\n", pfrom->addr.ToString().c_str(), pfrom->nVersion);
@@ -3876,3 +3876,4 @@ void GenerateBitcoins(bool fGenerate, CWallet* pwallet)
         }
     }
 }
+
